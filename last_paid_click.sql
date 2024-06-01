@@ -1,27 +1,29 @@
-with last_visit as (
-    select
+WITH last_visit AS (
+    SELECT
         visitor_id,
-        source,
-        medium,
-        campaign,
-        max(visit_date) as visit_date
-    from sessions
-    where medium != 'organic'
-    group by visitor_id, source, medium, campaign
+        MAX(visit_date) AS last_paid_visit
+    FROM sessions
+    WHERE medium != 'organic'
+    GROUP BY visitor_id
 )
 
-select
-    lv.visitor_id,
-    lv.visit_date,
-    lv.source as utm_source,
-    lv.medium as utm_medium,
-    lv.campaign as utm_campaign,
+SELECT
+    s.visitor_id,
+    s.visit_date,
+    s.source AS utm_source,
+    s.medium AS utm_medium,
+    s.campaign AS utm_campaign,
     l.lead_id,
     l.created_at,
     l.amount,
     l.closing_reason,
     l.status_id
-from last_visit as lv
-left join leads as l on lv.visitor_id = l.visitor_id
-order by
-    l.amount desc nulls last, lv.visit_date asc, utm_source asc, utm_medium asc, utm_campaign asc;
+FROM last_visit AS lv
+INNER JOIN
+    sessions AS s
+    ON lv.visitor_id = s.visitor_id AND lv.last_paid_visit = s.visit_date
+LEFT JOIN leads AS l ON s.visitor_id = l.visitor_id
+WHERE s.medium != 'organic' AND created_at >= s.visit_date
+ORDER BY
+    l.amount DESC NULLS LAST, visit_date ASC, utm_source ASC, utm_medium ASC, utm_campaign ASC;
+
